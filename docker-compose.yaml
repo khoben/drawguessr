@@ -1,0 +1,46 @@
+version: '3'
+services:
+  bot:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:${PORT}:${PORT}"
+    depends_on:
+      - postgres
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 20m
+
+  postgres:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: drawguesser
+      POSTGRES_USER: drawguesser
+      POSTGRES_PASSWORD: drawguesser
+    volumes:
+      - database:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 20m
+
+networks: 
+  default:
+    name: drawguesser-external
+
+volumes:
+  database:
+  resources:

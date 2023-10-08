@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" type="text/css" href="app/static/css/style.css">
+<h1 id="error">Unauthorized</h1>
+<canvas id="paintarea"></canvas>
+<div id="buttonbar">
+        <input type="color" class="color-button" id="color" alt="Choose color">
+        <div class="button" id="small-dot" alt="Small size">
+                <div class="dot dot-small"></div>
+        </div>
+        <div class="button" id="medium-dot" alt="Medium size">
+                <div class="dot dot-medium"></div>
+        </div>
+        <div class="button" id="large-dot" alt="Large size">
+                <div class="dot dot-large"></div>
+        </div>
+        <span class="v-spacer"></span>
+        <div class="button" id="eraser" alt="Eraser">
+                <div class="gg-erase"></div>
+        </div>
+        <div class="button" id="clear" alt="Clear">
+                <div class="gg-redo"></div>
+        </div>
+</div>
+
+<script src="https://telegram.org/js/telegram-web-app.js?1"></script>
+<script src="app/static/js/script.js"></script>
+{% endblock content %}

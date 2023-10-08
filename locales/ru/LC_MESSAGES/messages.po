@@ -1,0 +1,73 @@
+# Russian translations for PROJECT.
+# Copyright (C) 2023 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2023.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2023-10-08 20:28+0700\n"
+"PO-Revision-Date: 2023-10-05 21:45+0700\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: ru\n"
+"Language-Team: ru <LL@li.org>\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.13.0\n"
+
+#: main.py:43 main.py:54
+msgid "Start"
+msgstr "Начать"
+
+#: main.py:58
+#, fuzzy
+msgid "Create game"
+msgstr "Создать новую игру"
+
+#: handlers/invite.py:29 handlers/start.py:20
+#, fuzzy
+msgid "Hi, <b>{user}</b>! Send /game to create new game"
+msgstr "Привет, <b>{user}</b>! Отправь /game для создания игры"
+
+#: handlers/start.py:11
+#, fuzzy
+msgid "Hi, <b>{user}</b>! Add me to the group and we'll play a game."
+msgstr "Привет, <b>{user}</b>! Добавь меня в группу и мы сыграем в игру."
+
+#: middlewares/throttling.py:53
+msgid "Slow down please"
+msgstr "Воу-воу помедленнее"
+
+#: middlewares/usercontext.py:29
+msgid "🚫 Denied service"
+msgstr "🚫 Отказано в обслуживании"
+
+#: services/gamecontroller.py:43
+msgid "The game has already started"
+msgstr "Игра уже начата"
+
+#: services/gamecontroller.py:64 services/gamecontroller.py:109
+#: services/gamecontroller.py:134
+msgid "<a href='tg://user?id={owner_id}'>{owner_name}</a> draws for guessing"
+msgstr ""
+"<a href='tg://user?id={owner_id}'>{owner_name}</a> рисует, а вы угадайте "
+"слово"
+
+#: services/gamecontroller.py:71 services/gamecontroller.py:119
+#: services/gamecontroller.py:141
+msgid "Start drawing"
+msgstr "Начать рисовать"
+
+#: services/gamecontroller.py:180
+#, fuzzy
+msgid ""
+"Correct! Word: <b>{word}</b>.\n"
+"Type /game to start new game"
+msgstr ""
+"Правильно! Слово: <b>{word}</b>.\n"
+"Напиши /game для старта новой игры"
+
