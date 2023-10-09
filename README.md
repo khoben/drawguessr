@@ -65,6 +65,32 @@ Telegram Web App consists of [a simple HTTP server](/http_handlers/webapp/miniap
 
 ## Deploy
 
+<details>
+<summary>nginx reverse proxy config</summary>
+
+```conf
+...
+server {
+    ...
+    location /bot/ {
+        proxy_pass http://localhost:PORT;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location /web/ {
+        proxy_pass http://localhost:PORT;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+    ...
+}
+...
+```
+</details>
+
 ### [Docker](https://docs.docker.com/compose/install/):
 
 ```bash
