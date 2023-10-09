@@ -7,7 +7,7 @@ from psycopg.rows import class_row
 from psycopg_pool import AsyncConnectionPool
 
 from common.retry import AsyncRetryProtocol
-from database import Database, User, Game
+from database import Database, Game, User
 
 
 class PsycopgDatabase(
@@ -173,7 +173,7 @@ class PsycopgDatabase(
             game = await cursor.fetchone()
 
         return game
-    
+
     async def get_group_game(self: "PsycopgDatabase", group_id: str) -> Optional[Game]:
         """Get current group game"""
         game: Optional[Game] = None

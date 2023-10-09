@@ -1,4 +1,4 @@
-from typing import Tuple, Type, Union, Protocol
+from typing import Protocol, Tuple, Type, Union
 
 Exception_Type = Type[Exception]
 
@@ -46,6 +46,7 @@ class AsyncRetryProtocol(type(Protocol)):
                 and attr_name not in exclude
                 and asyncio.iscoroutinefunction(attr_value)
             ):
-                attrs[attr_name] = (retry(expects=expects, times=times))(attr_value)
+                attrs[attr_name] = (
+                    retry(expects=expects, times=times))(attr_value)
 
         return super(AsyncRetryProtocol, cls).__new__(cls, name, bases, attrs)

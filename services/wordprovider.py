@@ -1,16 +1,25 @@
-from typing import Protocol, NamedTuple
-import aiofiles
 import random
+from typing import NamedTuple, Protocol
+
+import aiofiles
+
 from common.awaitable import aenumerate
 
 
 class WordProvider(Protocol):
     async def generate(self, locale: str = "en") -> str:
-        """Get word depends on locale"""
+        """Generate word depends on [locale]
+
+        Args:
+            locale (str, optional): Locale language code. Defaults to "en".
+
+        Returns:
+            str: Generated word
+        """
         raise NotImplementedError
 
 
-class FileWord(NamedTuple):
+class FileWords(NamedTuple):
     locale: str
     filepath: str
     lines: int
@@ -18,8 +27,15 @@ class FileWord(NamedTuple):
 
 class FileWordProvider(WordProvider):
     def __init__(
-        self, *files: FileWord, default_locale="en", default_word="word"
+        self, *files: FileWords, default_locale="en", default_word="word"
     ) -> None:
+        """Word provider from local files
+
+        Args:
+            files (*FileWords): Words local files configs.
+            default_locale (str, optional): Default language code. Defaults to "en".
+            default_word (str, optional): Default word. Defaults to "word".
+        """
         self.__words = {file.locale: file for file in files}
         self.__default_config = self.__words.get(default_locale)
         self.__default_word = default_word

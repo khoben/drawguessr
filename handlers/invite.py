@@ -1,11 +1,8 @@
-from aiogram import Router, types, F
-from aiogram.filters import (
-    ChatMemberUpdatedFilter,
-    IS_MEMBER,
-    IS_NOT_MEMBER,
-)
-from services.gamecontroller import GameController
+from aiogram import F, Router, types
+from aiogram.filters import IS_MEMBER, IS_NOT_MEMBER, ChatMemberUpdatedFilter
 from aiogram.utils.i18n import gettext as _
+
+from services.gamecontroller import GameController
 
 router = Router()
 

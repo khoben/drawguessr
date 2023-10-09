@@ -1,11 +1,12 @@
 import time
 from contextlib import suppress
-from typing import Any, Awaitable, Callable, Dict, Union, NamedTuple
+from typing import Any, Awaitable, Callable, Dict, NamedTuple, Union
 
 from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message
-from cachetools import TTLCache
 from aiogram.utils.i18n import gettext as _
+from cachetools import TTLCache
+
 
 class ThrottledUserData(NamedTuple):
     start_time: float
@@ -49,12 +50,22 @@ class ThrottlingMiddleware(BaseMiddleware):
                         self.throttle_cache[user_id] = ThrottledUserData(
                             throttled.start_time, req_num + 1
                         )
-                        with suppress(Exception):
-                            await event.answer(_("Slow down please"))
+                        # Send throttling message to private chats only
+                        if (
+                            isinstance(
+                                event, Message) and event.chat.type == "private"
+                        ) or (
+                            isinstance(event, CallbackQuery)
+                            and event.message
+                            and event.message.chat.type == "private"
+                        ):
+                            with suppress(Exception):
+                                await event.answer(_("Slow down please"))
                     return
             else:
                 # reset timeframe
-                self.throttle_cache[user_id] = ThrottledUserData(current_time, 1)
+                self.throttle_cache[user_id] = ThrottledUserData(
+                    current_time, 1)
         else:
             self.throttle_cache[user_id] = ThrottledUserData(current_time, 1)
 

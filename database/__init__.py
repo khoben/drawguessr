@@ -72,7 +72,7 @@ class Database(Protocol):
     async def get_game(self: "Database", game_id: str) -> Optional[Game]:
         """Get game"""
         raise NotImplementedError
-    
+
     async def get_group_game(self: "Database", group_id: str) -> Optional[Game]:
         """Get current group game"""
         raise NotImplementedError
@@ -82,13 +82,13 @@ class Database(Protocol):
     ) -> None:
         """Update game message id"""
         raise NotImplementedError
-    
+
     async def game_finished(
         self: "Database", game_id: int
     ) -> None:
         """Update finished game: delete"""
         raise NotImplementedError
-    
+
     async def delete_games(
         self: "Database", group_id: int
     ) -> None:

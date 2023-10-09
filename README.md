@@ -52,8 +52,14 @@ It is a [simple aiohttp server](/http_handlers/webapp/miniapp.py) with a [vanill
     DB_URL=postgresql://user:user@postgres:5432/user
     # Host domain
     HOST=
-    # Port
+    # Local port
     PORT=
+    # Initial reusable image via `file_id`
+    # can be obtained as follows:
+    # 1. Send the image (`./resources/initial_canvas.jpg` ) to your bot
+    # 2. Get `file_id` from this message (e.g., forward message to https://t.me/JsonDumpBot),
+    # `file_id` can be used only for this bot
+    INITIAL_CANVAS_FILE_ID=
     ```
     </details>
 

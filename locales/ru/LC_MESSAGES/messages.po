@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2023-10-08 20:28+0700\n"
+"POT-Creation-Date: 2023-10-09 12:35+0700\n"
 "PO-Revision-Date: 2023-10-05 21:45+0700\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ru\n"
@@ -19,26 +19,31 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.13.0\n"
 
-#: main.py:43 main.py:54
+#: main.py:40 main.py:55
 msgid "Start"
 msgstr "Начать"
 
-#: main.py:58
-#, fuzzy
+#: main.py:59
 msgid "Create game"
-msgstr "Создать новую игру"
+msgstr "Создать игру"
 
-#: handlers/invite.py:29 handlers/start.py:20
-#, fuzzy
+#: main.py:63
+msgid "Cancel game"
+msgstr "Отменить игру"
+
+#: handlers/invite.py:26 handlers/start.py:20
 msgid "Hi, <b>{user}</b>! Send /game to create new game"
 msgstr "Привет, <b>{user}</b>! Отправь /game для создания игры"
 
 #: handlers/start.py:11
-#, fuzzy
 msgid "Hi, <b>{user}</b>! Add me to the group and we'll play a game."
 msgstr "Привет, <b>{user}</b>! Добавь меня в группу и мы сыграем в игру."
 
-#: middlewares/throttling.py:53
+#: middlewares/__init__.py:32
+msgid "An unexpected error has occurred. Retry the request at a later time"
+msgstr "Произошла непредвиденная ошибка. Повторите запрос позднее"
+
+#: middlewares/throttling.py:63
 msgid "Slow down please"
 msgstr "Воу-воу помедленнее"
 
@@ -46,28 +51,31 @@ msgstr "Воу-воу помедленнее"
 msgid "🚫 Denied service"
 msgstr "🚫 Отказано в обслуживании"
 
-#: services/gamecontroller.py:43
+#: services/gamecontroller.py:112
 msgid "The game has already started"
 msgstr "Игра уже начата"
 
-#: services/gamecontroller.py:64 services/gamecontroller.py:109
-#: services/gamecontroller.py:134
+#: services/gamecontroller.py:134 services/gamecontroller.py:184
+#: services/gamecontroller.py:209
 msgid "<a href='tg://user?id={owner_id}'>{owner_name}</a> draws for guessing"
 msgstr ""
 "<a href='tg://user?id={owner_id}'>{owner_name}</a> рисует, а вы угадайте "
 "слово"
 
-#: services/gamecontroller.py:71 services/gamecontroller.py:119
-#: services/gamecontroller.py:141
+#: services/gamecontroller.py:141 services/gamecontroller.py:194
+#: services/gamecontroller.py:216
 msgid "Start drawing"
 msgstr "Начать рисовать"
 
-#: services/gamecontroller.py:180
-#, fuzzy
+#: services/gamecontroller.py:262
 msgid ""
 "Correct! Word: <b>{word}</b>.\n"
 "Type /game to start new game"
 msgstr ""
 "Правильно! Слово: <b>{word}</b>.\n"
 "Напиши /game для старта новой игры"
+
+#: services/gamecontroller.py:314
+msgid "The game is cancelled. Type /game to create new one"
+msgstr "Игра отменена. Отправь /game для создания новой игры"
 

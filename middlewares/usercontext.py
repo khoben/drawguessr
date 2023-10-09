@@ -1,11 +1,11 @@
 from contextlib import suppress
-from typing import Any, Awaitable, Callable, Dict, Union, Tuple
+from typing import Any, Awaitable, Callable, Dict, Tuple, Union
 
 from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message
+from aiogram.utils.i18n import gettext as _
 
 from database import User
-from aiogram.utils.i18n import gettext as _
 
 
 class UserContextMiddleware(BaseMiddleware):

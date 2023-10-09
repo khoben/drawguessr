@@ -65,6 +65,7 @@
     attachCanvasListeners();
 
     showWord();
+    subscribeToGameEvents();
     setInterval(() => publishImage(), 1_500);
 
     function attachCanvasListeners() {
@@ -257,6 +258,21 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         vctx.clearRect(0, 0, vcanvas.width, vcanvas.height);
         drawingBoundary = null;
+    }
+
+    function subscribeToGameEvents() {
+        let url = new URL("/web/app/events", window.location.href);
+        url.searchParams.set('_auth', initData);
+        url.searchParams.set('gameId', gameId);
+
+        let eventSource = new EventSource(url);
+        eventSource.onmessage = function(event) {
+            error_el = document.getElementById('error');
+            error_el.innerText = _(event.data);
+            error_el.style.visibility = 'visible';
+            eventSource.close();
+            detachListeners();
+        };
     }
 
     function showWord() {

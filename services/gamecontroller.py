@@ -1,20 +1,23 @@
-from aiogram import Bot, types
-from aiogram.utils.web_app import safe_parse_webapp_init_data
-from database import Database, Game
-from config import config
-from aiogram.utils.i18n import I18n
-import uuid
-from services.wordprovider import WordProvider
+import asyncio
 import re
-from typing import Optional, NamedTuple
-from enum import IntEnum
+import uuid
+from enum import Enum
+from typing import NamedTuple, Optional
+
+from aiogram import Bot, types
+from aiogram.utils.i18n import I18n
+from aiogram.utils.web_app import WebAppInitData, safe_parse_webapp_init_data
+
+from config import config
+from database import Database, Game
+from services.wordprovider import WordProvider
 
 
-class GameWordStatus(IntEnum):
-    Ok = 0
-    NotHost = 1
-    Ended = 2
-    NotAuth = 3
+class GameWordStatus(str, Enum):
+    Ok = 'ok'
+    NotHost = 'not_host'
+    Ended = 'ended'
+    NotAuth = 'not_auth'
 
 
 class GameWordResult(NamedTuple):
@@ -24,15 +27,81 @@ class GameWordResult(NamedTuple):
 
 class GameController:
     def __init__(
-        self, bot: Bot, db: Database, i18n: I18n, word_provider: WordProvider
+        self,
+        bot: Bot,
+        db: Database,
+        i18n: I18n,
+        word_provider: WordProvider,
+        initial_canvas_file_id: str,
     ) -> None:
+        """Draw&Guess game controller
+
+        Args:
+            bot (Bot): Bot instance
+            db (Database): Database instance
+            i18n (I18n): i18n localization instance
+            word_provider (WordProvider): Word provider
+            initial_canvas_file_id (str): Initial empty image `file_id`
+        """
         self.__bot = bot
         self.__db = db
         self.__i18n = i18n
         self.__word_provider = word_provider
-        self.__regex_cache: dict[int, re.Pattern] = {}
+        self.__initial_canvas_file_id = initial_canvas_file_id
+        self.__regex_cache: dict[str, re.Pattern] = {}
+        self.__game_listeners: dict[str, set[asyncio.Queue]] = {}
 
-    async def create_game(self, group_id: int, owner_id: int, owner_name: str) -> Game:
+    def extract_init_data(self, init_data: str) -> Optional[WebAppInitData]:
+        """Extract Telegram Web App initData safe string
+
+        Args:
+            init_data (str): Telegram Web App initData safe string
+
+        Returns:
+            Optional[WebAppInitData]: WebAppInitData
+        """
+        try:
+            return safe_parse_webapp_init_data(
+                token=self.__bot.token, init_data=init_data
+            )
+        except ValueError:
+            return None
+
+    async def sub(self, init_data: str, game_id: str) -> Optional[asyncio.Queue]:
+        """Subscribe to game events
+
+        Args:
+            init_data (str): Telegram Web App initData safe string
+            game_id (str): Game id
+
+        Returns:
+            Optional[asyncio.Queue]: Event queue
+        """
+        if not self.extract_init_data(init_data=init_data):
+            return None
+
+        queue = asyncio.Queue()
+        self.__game_listeners.setdefault(game_id, set()).add(queue)
+        return queue
+
+    async def unsub(self, game_id: str, queue: asyncio.Queue) -> None:
+        """Unsub from game events
+
+        Args:
+            game_id (str): _description_
+        """
+        listeners = self.__game_listeners.get(game_id)
+        if listeners:
+            listeners.remove(queue)
+
+    async def create_game(self, group_id: int, owner_id: int, owner_name: str) -> None:
+        """Create new game
+
+        Args:
+            group_id (int): Requested group id for a game
+            owner_id (int): Requested owner (user) id for a game
+            owner_name (str): Requested owner (user) name for a game
+        """
         already_running_game = await self.__db.get_group_game(group_id=group_id)
         if already_running_game:
             _ = self.__i18n.gettext
@@ -44,6 +113,7 @@ class GameController:
                 )
             except Exception:
                 pass
+
             return
 
         word = await self.__word_provider.generate()
@@ -60,7 +130,7 @@ class GameController:
 
         game_message = await self.__bot.send_photo(
             chat_id=group_id,
-            photo="AgACAgIAAxkBAAEPm_FlIjhc7y2OogMFZ_PAnSCCd6rmdwACJ9UxG1itEUkI7Wj41sWHigEAAwIAA20AAzAE",
+            photo=self.__initial_canvas_file_id,
             caption=_(
                 "<a href='tg://user?id={owner_id}'>{owner_name}</a> draws for guessing"
             ).format(owner_id=owner_id, owner_name=owner_name),
@@ -80,14 +150,19 @@ class GameController:
             game_id=game.id, new_message_id=game_message.message_id
         )
 
-        return game
-
     async def update_state(self, init_data: str, game_id: str, image) -> bool:
-        try:
-            safe_init_data = safe_parse_webapp_init_data(
-                token=self.__bot.token, init_data=init_data
-            )
-        except ValueError:
+        """Update game state
+
+        Args:
+            init_data (str): Telegram Web App initData safe string
+            game_id (str): Game id
+            image (_type_): Updated canvas image
+
+        Returns:
+            bool: State has been updated
+        """
+        safe_init_data = self.extract_init_data(init_data=init_data)
+        if not safe_init_data:
             return False
 
         game = await self.__db.get_game(game_id=game_id)
@@ -100,7 +175,7 @@ class GameController:
         media_image = types.BufferedInputFile(
             image.file.read(), filename=image.filename
         )
-        not_edited = False
+        try_resend = False
         _ = self.__i18n.gettext
         try:
             await self.__bot.edit_message_media(
@@ -124,9 +199,9 @@ class GameController:
                 ),
             )
         except Exception:
-            not_edited = True
+            try_resend = True
 
-        if not_edited:
+        if try_resend:
             try:
                 new_message = await self.__bot.send_photo(
                     chat_id=game.group_id,
@@ -156,6 +231,14 @@ class GameController:
     async def check_word(
         self, group_id: int, message_id: int, user_id: int, text: str
     ) -> None:
+        """Check [text] for game word
+
+        Args:
+            group_id (int): Group id
+            message_id (int): Message id
+            user_id (int): User id
+            text (str): Message text
+        """
         game = await self.__db.get_group_game(group_id=group_id)
         if game is None:
             return
@@ -163,14 +246,13 @@ class GameController:
         if game.owner_id == user_id:
             return
 
-        regex = self.__regex_cache.get(group_id)
+        regex = self.__regex_cache.get(game.game_id)
         if not regex:
             regex = re.compile(game.word, re.IGNORECASE)
-            self.__regex_cache[group_id] = regex
+            self.__regex_cache[game.game_id] = regex
 
         if regex.match(text):
-            await self.__db.game_finished(game_id=game.id)
-            del self.__regex_cache[group_id]
+            await self.__game_finished(game=game)
 
             _ = self.__i18n.gettext
             try:
@@ -185,11 +267,17 @@ class GameController:
                 pass
 
     async def get_word(self, init_data: str, game_id: str) -> GameWordResult:
-        try:
-            safe_init_data = safe_parse_webapp_init_data(
-                token=self.__bot.token, init_data=init_data
-            )
-        except ValueError:
+        """Get current word for game with [game_id]
+
+        Args:
+            init_data (str): Telegram Web App initData safe string
+            game_id (str): Game id
+
+        Returns:
+            GameWordResult: Game's word response
+        """
+        safe_init_data = self.extract_init_data(init_data=init_data)
+        if not safe_init_data:
             return GameWordResult(None, GameWordStatus.NotAuth)
 
         game = await self.__db.get_game(game_id=game_id)
@@ -201,8 +289,53 @@ class GameController:
 
         return GameWordResult(game.word, GameWordStatus.Ok)
 
+    async def cancel_game(self, group_id: int, user_id: int, is_admin: bool) -> None:
+        """Cancel current group game
+
+        Args:
+            group_id (int): Group id
+            user_id (int): User id
+            is_admin (bool): User is admin in group
+        """
+        game = await self.__db.get_group_game(group_id=group_id)
+        if game is None:
+            return
+
+        if game.owner_id != user_id and not is_admin:
+            return
+
+        await self.__game_finished(game=game)
+
+        _ = self.__i18n.gettext
+        try:
+            await self.__bot.send_message(
+                chat_id=group_id,
+                reply_to_message_id=game.message_id,
+                text=_("The game is cancelled. Type /game to create new one"),
+            )
+        except Exception:
+            pass
+
     async def delete_games(self, group_id: int) -> None:
+        """Delete all game for group with [group_id]
+
+        Args:
+            group_id (int): Group id
+        """
         await self.__db.delete_games(group_id=group_id)
+
+    async def __game_finished(self, game: Game) -> None:
+        await self.__db.game_finished(game_id=game.id)
+
+        await asyncio.gather(
+            *[
+                listener.put(GameWordStatus.Ended)
+                for listener in self.__game_listeners.get(game.game_id, set())
+            ]
+        )
+
+        self.__game_listeners.pop(game.game_id, None)
+        self.__regex_cache.pop(game.game_id, None)
 
     def __generate_game_id(self) -> str:
         return f"gameId__{uuid.uuid4()}"

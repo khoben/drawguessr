@@ -9,6 +9,7 @@ def await_for(coro) -> Any:
     loop.run_until_complete(task)
     return task.result()
 
+
 async def aenumerate(asequence, start=0):
     """Asynchronously enumerate an async iterator from a given start value"""
     n = start
