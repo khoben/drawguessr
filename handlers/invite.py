@@ -13,7 +13,7 @@ router = Router()
 )
 async def on_my_leave(event: types.ChatMemberUpdated, controller: GameController):
     group_id = event.chat.id
-    await controller.delete_games(group_id=group_id)
+    await controller.delete_game(group_id=group_id)
 
 
 @router.my_chat_member(

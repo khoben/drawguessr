@@ -316,13 +316,16 @@ class GameController:
         except Exception:
             pass
 
-    async def delete_games(self, group_id: int) -> None:
-        """Delete all game for group with [group_id]
+    async def delete_game(self, group_id: int) -> None:
+        """Delete game for group with [group_id]
 
         Args:
             group_id (int): Group id
         """
-        await self.__db.delete_games(group_id=group_id)
+        game = await self.__db.get_group_game(group_id=group_id)
+        if not game:
+            return
+        await self.__game_finished(game)
 
     async def __game_finished(self, game: Game) -> None:
         await self.__db.game_finished(game_id=game.id)

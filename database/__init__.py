@@ -73,7 +73,7 @@ class Database(Protocol):
         """Get game"""
         raise NotImplementedError
 
-    async def get_group_game(self: "Database", group_id: str) -> Optional[Game]:
+    async def get_group_game(self: "Database", group_id: int) -> Optional[Game]:
         """Get current group game"""
         raise NotImplementedError
 

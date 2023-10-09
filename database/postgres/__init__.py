@@ -174,7 +174,7 @@ class PsycopgDatabase(
 
         return game
 
-    async def get_group_game(self: "PsycopgDatabase", group_id: str) -> Optional[Game]:
+    async def get_group_game(self: "PsycopgDatabase", group_id: int) -> Optional[Game]:
         """Get current group game"""
         game: Optional[Game] = None
         async with self.__pg_cursor() as cursor:
