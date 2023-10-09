@@ -93,6 +93,9 @@ async def game_events_handler(request: web.Request) -> web.Response:
                 # not nice, pending https://github.com/aio-libs/aiohttp-sse/issues/391
                 if resp._ping_task.done():
                     break
+        except ConnectionResetError:
+            # Connection reset by client
+            pass
         finally:
             await controller.unsub(game_id=params["gameId"], queue=queue)
 
