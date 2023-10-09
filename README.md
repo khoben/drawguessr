@@ -13,7 +13,7 @@
 
 ### DrawGuessr Telegram Web App [source](/http_handlers/webapp/)
 
-Telegram Web App consists of [a simple HTTP server](/http_handlers/webapp/miniapp.py) that serves static `.js` and `.css` files with [SSE](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) and a [vanilla js client with canvas](/http_handlers/webapp/static/js/script.js) controlled by ordinary [Telegram chat/group bot](handlers).
+Telegram Web App consists of [a simple HTTP server](/http_handlers/webapp/miniapp.py) that serves static `.html`, `.js` and `.css` files, uses [SSE](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) to listen for game updates, and a [vanilla js client with canvas](/http_handlers/webapp/static/js/script.js) controlled by [Telegram chat/group bot](handlers).
 
 ## Prepare
 
