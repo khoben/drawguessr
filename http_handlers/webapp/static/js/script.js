@@ -44,6 +44,7 @@
 
     // gameId__123d234f
     const gameId = initDataUnsafe.start_param;
+    let gameWord = null;
 
     const canvas = document.getElementById('paintarea'),
         vcanvas = document.createElement('canvas'),
@@ -97,6 +98,7 @@
             color = eraserColor
         }
         document.getElementById('clear').onclick = clearCanvas;
+        document.getElementById('word').onclick = showWord;
         document.getElementById('color').onchange = (e) => { color = e.target.value };
 
         // Drawing event handlers (bound to mouse, redirected from touch)
@@ -121,6 +123,7 @@
         document.getElementById('large-dot').onclick = null;
         document.getElementById('clear').onclick = null;
         document.getElementById('eraser').onclick = null;
+        document.getElementById('word').onclick = null;
         document.getElementById('color').onchange = null;
 
         canvas.removeEventListener('mousedown', onMouseDown, false);
@@ -276,6 +279,11 @@
     }
 
     function showWord() {
+        if (gameWord) {
+            Telegram.WebApp.showPopup({ title: _('word'), message: gameWord });
+            return;
+        }
+
         let url = new URL('/web/app/word', window.location.href);
         url.searchParams.set('_auth', initData);
         url.searchParams.set('gameId', gameId);
@@ -283,8 +291,10 @@
         let XHR = new XMLHttpRequest();
         XHR.addEventListener('load', event => {
             if (event.target.status < 400) {
+                gameWord = event.target.response
+                Telegram.WebApp.showPopup({ title: _('word'), message: gameWord });
+
                 console.log("Success Status: " + event.target.status);
-                Telegram.WebApp.showPopup({ title: _('word'), message: event.target.response });
             } else {
                 error_el = document.getElementById('error');
                 error_el.innerText = _(event.target.response);
