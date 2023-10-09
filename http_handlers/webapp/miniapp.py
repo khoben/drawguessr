@@ -65,6 +65,33 @@ async def word_handler(request: web.Request) -> web.Response:
             return web.Response(text="error", status=401)
 
 
+class EventSourceResponsePatched(EventSourceResponse):
+    """Patched EventSourceResponse:
+
+    `_ping()` - Cancellation on ConnectionResetError
+
+    `is_connected()` - Check connection is prepared and ping task is not done
+    """
+
+    async def _ping(self):
+        """https://github.com/aio-libs/aiohttp-sse/pull/370"""
+        # periodically send ping to the browser. Any message that
+        # starts with ":" colon ignored by a browser and could be used
+        # as ping message.
+        while True:
+            await asyncio.sleep(self._ping_interval)
+            try:
+                await self.write(": ping{0}{0}".format(self._sep).encode("utf-8"))
+            except ConnectionResetError:
+                self._ping_task.cancel()
+
+    def is_connected(self) -> bool:
+        """Check connection is prepared and ping task is not done.
+        https://github.com/aio-libs/aiohttp-sse/pull/401
+        """
+        return self.prepared and not self._ping_task.done()
+
+
 @limiter.limit("1/second")
 async def game_events_handler(request: web.Request) -> web.Response:
     params = request.rel_url.query
@@ -78,8 +105,8 @@ async def game_events_handler(request: web.Request) -> web.Response:
     if not queue:
         return web.Response(status=204, text="Unauthorized")
 
-    resp: EventSourceResponse
-    async with sse_response(request) as resp:
+    resp: EventSourceResponsePatched
+    async with sse_response(request, response_cls=EventSourceResponsePatched) as resp:
         resp.ping_interval = 5
         try:
             while not resp.task.done():
@@ -91,7 +118,7 @@ async def game_events_handler(request: web.Request) -> web.Response:
                 # internal ping task ends prematurely meaning that the client
                 # closed the connection, exit
                 # not nice, pending https://github.com/aio-libs/aiohttp-sse/issues/391
-                if resp._ping_task.done():
+                if not resp.is_connected():
                     break
         except ConnectionResetError:
             # Connection reset by client
@@ -106,8 +133,7 @@ app = web.Application()
 aiohttp_jinja2.setup(
     app,
     enable_async=True,
-    loader=jinja2.FileSystemLoader(
-        Path(__file__).parent.resolve() / "templates"),
+    loader=jinja2.FileSystemLoader(Path(__file__).parent.resolve() / "templates"),
 )
 app.add_routes(
     [
