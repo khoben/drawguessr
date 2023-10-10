@@ -5,6 +5,14 @@
 <img src="README.md-images/w1.png" width="200" /> <img src="README.md-images/w2.png" width="200" /> <img src="README.md-images/w3.png" width="200" />
 </pre>
 
+### Sample bot - https://t.me/DrawGuessrBot 
+
+### Game mechanics
+
+[@DrawGuessrBot](https://t.me/DrawGuessrBot) - a miniapp that mimics to [Draw&Guess game](https://en.wikipedia.org/wiki/Draw_%26_Guess). After adding the bot to the group, you can start the game (using the `/game` command), where the host, through the Telegram Web App, begins to draw the hidden word. Group users see the updated image and write words in the group chat. As soon as the correct word is written, the game ends.
+
+If you get tired of playing, the host or group administrator can cancel the game using the `/cancel` command.
+
 ### Built with
 - [python 3.11](https://www.python.org/downloads/)
 - [aiohttp](https://docs.aiohttp.org/en/stable/) - asynchronous http server
@@ -13,15 +21,7 @@
 - [aiogram](https://docs.aiogram.dev/en/latest/) - asynchronous framework for Telegram Bot API
 - [PostgreSQL](https://www.postgresql.org/) - relational database
 
-### DrawGuessr Telegram Web App [source](/http_handlers/webapp/)
-
 Telegram Web App consists of [a simple HTTP server](/http_handlers/webapp/miniapp.py) that serves static `.html`, `.js` and `.css` files, uses [SSE](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) to listen for game updates, and a [vanilla js client with canvas](/http_handlers/webapp/static/js/script.js) controlled by [Telegram chat/group bot](handlers).
-
-### Game mechanics
-
-After adding the bot to the group, you can start the game (using the `/game` command), where the host, through the Telegram Web App, begins to draw the hidden word. Group users see the updated image and write words in the group chat. As soon as the correct word is written, the game ends.
-
-If you get tired of playing, the host or group administrator can cancel the game using the `/cancel` command.
 
 ### Endpoints
 
