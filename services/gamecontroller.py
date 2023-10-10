@@ -1,28 +1,47 @@
 import asyncio
 import re
 import uuid
-from enum import Enum
 from typing import NamedTuple, Optional
 
 from aiogram import Bot, types
 from aiogram.utils.i18n import I18n
 from aiogram.utils.web_app import WebAppInitData, safe_parse_webapp_init_data
 
+from common.enumcompat import StrEnum
 from config import config
 from database import Database, Game
 from services.wordprovider import WordProvider
 
 
-class GameWordStatus(str, Enum):
-    Ok = 'ok'
-    NotHost = 'not_host'
-    Ended = 'ended'
-    NotAuth = 'not_auth'
+class GameWordStatus(StrEnum):
+    Ok = "ok"
+    NotHost = "not_host"
+    Ended = "ended"
+    NotAuth = "not_auth"
+    AlreadyConnected = "already_connected"
 
 
 class GameWordResult(NamedTuple):
     word: Optional[str]
     status: GameWordStatus
+
+
+class GameEventType(StrEnum):
+    Word = "word"
+    Error = "error"
+    Disconnect = "disconnect"
+
+
+class GameEvent(NamedTuple):
+    type: GameEventType
+    data: str
+
+
+class SessionQueue(asyncio.Queue):
+    def __init__(self, maxsize: int = 0) -> None:
+        super().__init__(maxsize)
+        self.session_id: Optional[str] = None
+        self.request_id: Optional[str] = None
 
 
 class GameController:
@@ -49,7 +68,7 @@ class GameController:
         self.__word_provider = word_provider
         self.__initial_canvas_file_id = initial_canvas_file_id
         self.__regex_cache: dict[str, re.Pattern] = {}
-        self.__game_listeners: dict[str, set[asyncio.Queue]] = {}
+        self.__game_listener: dict[str, SessionQueue[GameEvent]] = {}
 
     def extract_init_data(self, init_data: str) -> Optional[WebAppInitData]:
         """Extract Telegram Web App initData safe string
@@ -67,7 +86,7 @@ class GameController:
         except ValueError:
             return None
 
-    async def sub(self, init_data: str, game_id: str) -> Optional[asyncio.Queue]:
+    async def sub(self, init_data: str, game_id: str) -> SessionQueue[GameEvent]:
         """Subscribe to game events
 
         Args:
@@ -75,24 +94,60 @@ class GameController:
             game_id (str): Game id
 
         Returns:
-            Optional[asyncio.Queue]: Event queue
+            asyncio.Queue[GameEvent]: Event queue
         """
-        if not self.extract_init_data(init_data=init_data):
-            return None
+        queue = SessionQueue[GameEvent]()
+        safe_init_data = self.extract_init_data(init_data=init_data)
 
-        queue = asyncio.Queue()
-        self.__game_listeners.setdefault(game_id, set()).add(queue)
+        if not safe_init_data:
+            await queue.put(GameEvent(GameEventType.Error, GameWordStatus.NotAuth))
+            return queue
+
+        queue.session_id = safe_init_data.hash
+        queue.request_id = str(uuid.uuid4())
+
+        game = await self.__db.get_game(game_id=game_id)
+        if not game:
+            await queue.put(GameEvent(GameEventType.Error, GameWordStatus.Ended))
+            return queue
+
+        if safe_init_data.user.id != game.owner_id:
+            await queue.put(GameEvent(GameEventType.Error, GameWordStatus.NotHost))
+            return queue
+
+        listener = self.__game_listener.get(game_id)
+        if listener:
+            if queue.session_id != listener.session_id:
+                await queue.put(
+                    GameEvent(GameEventType.Error,
+                              GameWordStatus.AlreadyConnected)
+                )
+                return queue
+            else:
+                await listener.put(GameEventType.Disconnect)
+
+        self.__game_listener[game_id] = queue
+        await queue.put(GameEvent(GameEventType.Word, game.word))
+
         return queue
 
-    async def unsub(self, game_id: str, queue: asyncio.Queue) -> None:
+    async def unsub(self, game_id: str, session_queue: SessionQueue) -> None:
         """Unsub from game events
 
         Args:
-            game_id (str): _description_
+            game_id (str): Game id
+            session_queue (SessionQueue): Session queue
         """
-        listeners = self.__game_listeners.get(game_id)
-        if listeners:
-            listeners.remove(queue)
+        if session_queue.session_id is None or session_queue.request_id is None:
+            return
+
+        listener = self.__game_listener.get(game_id)
+        if (
+            listener
+            and listener.session_id == session_queue.session_id
+            and listener.request_id == session_queue.request_id
+        ):
+            self.__game_listener.pop(game_id, None)
 
     async def create_game(self, group_id: int, owner_id: int, owner_name: str) -> None:
         """Create new game
@@ -330,14 +385,11 @@ class GameController:
     async def __game_finished(self, game: Game) -> None:
         await self.__db.game_finished(game_id=game.id)
 
-        await asyncio.gather(
-            *[
-                listener.put(GameWordStatus.Ended)
-                for listener in self.__game_listeners.get(game.game_id, set())
-            ]
-        )
+        listener = self.__game_listener.get(game.game_id)
+        if listener:
+            await listener.put(GameEvent(GameEventType.Error, GameWordStatus.Ended))
 
-        self.__game_listeners.pop(game.game_id, None)
+        self.__game_listener.pop(game.game_id, None)
         self.__regex_cache.pop(game.game_id, None)
 
     def __generate_game_id(self) -> str:

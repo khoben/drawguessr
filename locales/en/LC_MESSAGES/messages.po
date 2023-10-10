@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2023-10-09 12:35+0700\n"
+"POT-Creation-Date: 2023-10-10 15:51+0700\n"
 "PO-Revision-Date: 2023-10-05 21:45+0700\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: en\n"
@@ -50,21 +50,21 @@ msgstr "Slow down please"
 msgid "🚫 Denied service"
 msgstr "🚫 Denied service"
 
-#: services/gamecontroller.py:112
+#: services/gamecontroller.py:167
 msgid "The game has already started"
 msgstr "The game has already started"
 
-#: services/gamecontroller.py:134 services/gamecontroller.py:184
-#: services/gamecontroller.py:209
+#: services/gamecontroller.py:189 services/gamecontroller.py:239
+#: services/gamecontroller.py:264
 msgid "<a href='tg://user?id={owner_id}'>{owner_name}</a> draws for guessing"
 msgstr "<a href='tg://user?id={owner_id}'>{owner_name}</a> draws for guessing"
 
-#: services/gamecontroller.py:141 services/gamecontroller.py:194
-#: services/gamecontroller.py:216
+#: services/gamecontroller.py:196 services/gamecontroller.py:249
+#: services/gamecontroller.py:271
 msgid "Start drawing"
 msgstr "Start drawing"
 
-#: services/gamecontroller.py:262
+#: services/gamecontroller.py:317
 msgid ""
 "Correct! Word: <b>{word}</b>.\n"
 "Type /game to start new game"
@@ -72,7 +72,7 @@ msgstr ""
 "Correct! Word: <b>{word}</b>.\n"
 "Type /game to start new game"
 
-#: services/gamecontroller.py:314
+#: services/gamecontroller.py:369
 msgid "The game is cancelled. Type /game to create new one"
 msgstr "The game is cancelled. Type /game to create new one"
 

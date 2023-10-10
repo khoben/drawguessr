@@ -1,5 +1,6 @@
 import asyncio
 from pathlib import Path
+from typing import Union
 
 import aiohttp_jinja2
 import jinja2
@@ -7,7 +8,8 @@ from aiohttp import web
 from aiohttp_sse import EventSourceResponse, sse_response
 from aiohttplimiter import Limiter, default_keyfunc
 
-from services.gamecontroller import GameController, GameWordStatus
+from services.gamecontroller import (GameController, GameEvent, GameEventType,
+                                     GameWordStatus)
 
 limiter = Limiter(keyfunc=default_keyfunc)
 
@@ -20,7 +22,7 @@ async def miniapp_handler(request: web.Request) -> web.Response:
 
 
 @limiter.limit("1/second")
-async def update_handler(request: web.Request) -> web.Response:
+async def update_canvas_handler(request: web.Request) -> web.Response:
     if request.content_type != "multipart/form-data":
         return web.Response(status=401, text="Incorrect content type")
 
@@ -41,7 +43,7 @@ async def update_handler(request: web.Request) -> web.Response:
 
 
 @limiter.limit("1/second")
-async def word_handler(request: web.Request) -> web.Response:
+async def get_word_handler(request: web.Request) -> web.Response:
     params = request.rel_url.query
 
     if "_auth" not in params or "gameId" not in params:
@@ -55,14 +57,8 @@ async def word_handler(request: web.Request) -> web.Response:
     match word_result.status:
         case GameWordStatus.Ok:
             return web.Response(text=word_result.word)
-        case GameWordStatus.NotAuth:
-            return web.Response(text="not_auth", status=401)
-        case GameWordStatus.NotHost:
-            return web.Response(text="not_host", status=401)
-        case GameWordStatus.Ended:
-            return web.Response(text="ended", status=401)
         case _:
-            return web.Response(text="error", status=401)
+            return web.Response(text=word_result.status, status=401)
 
 
 class EventSourceResponsePatched(EventSourceResponse):
@@ -97,34 +93,45 @@ async def game_events_handler(request: web.Request) -> web.Response:
     params = request.rel_url.query
 
     if "_auth" not in params or "gameId" not in params:
-        return web.Response(status=204, text="Some keys are missing")
+        return web.Response(status=204)
 
     controller: GameController = request.app["controller"]
+    _auth = params["_auth"]
+    game_id = params["gameId"]
 
-    queue = await controller.sub(init_data=params["_auth"], game_id=params["gameId"])
-    if not queue:
-        return web.Response(status=204, text="Unauthorized")
+    queue = await controller.sub(init_data=_auth, game_id=game_id)
 
     resp: EventSourceResponsePatched
     async with sse_response(request, response_cls=EventSourceResponsePatched) as resp:
         resp.ping_interval = 5
+
+        async def stop_event_on_disconnect() -> None:
+            await resp.wait()
+            await queue.put(GameEventType.Disconnect)
+
+        asyncio.create_task(stop_event_on_disconnect())
+
         try:
-            while not resp.task.done():
-                payload = await queue.get()
-                await resp.send(payload)
+            while resp.is_connected():
+                event: Union[GameEvent, GameEventType]
+                event = await queue.get()
                 queue.task_done()
 
-                # exit infinite loop if stop event is set
-                # internal ping task ends prematurely meaning that the client
-                # closed the connection, exit
-                # not nice, pending https://github.com/aio-libs/aiohttp-sse/issues/391
-                if not resp.is_connected():
+                if event == GameEventType.Disconnect:
+                    break
+
+                await resp.send(data=event.data, event=event.type)
+
+                if event.type == GameEventType.Error:
+                    await resp.send("reset", event="reset")
                     break
         except ConnectionResetError:
-            # Connection reset by client
             pass
         finally:
-            await controller.unsub(game_id=params["gameId"], queue=queue)
+            await controller.unsub(
+                game_id=game_id,
+                session_queue=queue
+            )
 
     return resp
 
@@ -133,13 +140,14 @@ app = web.Application()
 aiohttp_jinja2.setup(
     app,
     enable_async=True,
-    loader=jinja2.FileSystemLoader(Path(__file__).parent.resolve() / "templates"),
+    loader=jinja2.FileSystemLoader(
+        Path(__file__).parent.resolve() / "templates"),
 )
 app.add_routes(
     [
         web.get("", miniapp_handler),
-        web.post("/update", update_handler),
-        web.get("/word", word_handler),
+        web.post("/update", update_canvas_handler),
+        web.get("/word", get_word_handler),
         web.get("/events", game_events_handler),
         web.static(
             "/static", Path(__file__).parent.resolve() / "static", name="static"

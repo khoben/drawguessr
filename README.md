@@ -8,18 +8,42 @@
 ### Built with
 - [python 3.11](https://www.python.org/downloads/)
 - [aiohttp](https://docs.aiohttp.org/en/stable/) - asynchronous http server
+- [aiohttp-jinja2](https://github.com/aio-libs/aiohttp-jinja2) - [jinja2](https://jinja.palletsprojects.com/en/3.1.x/) template renderer
+- [aiohttp-sse](https://github.com/aio-libs/aiohttp-sse) - server-sent events for aiohttp
 - [aiogram](https://docs.aiogram.dev/en/latest/) - asynchronous framework for Telegram Bot API
-- [PostgreSQL](https://www.postgresql.org/) - relational Database
+- [PostgreSQL](https://www.postgresql.org/) - relational database
 
 ### DrawGuessr Telegram Web App [source](/http_handlers/webapp/)
 
 Telegram Web App consists of [a simple HTTP server](/http_handlers/webapp/miniapp.py) that serves static `.html`, `.js` and `.css` files, uses [SSE](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) to listen for game updates, and a [vanilla js client with canvas](/http_handlers/webapp/static/js/script.js) controlled by [Telegram chat/group bot](handlers).
 
+### Game mechanics
+
+After adding the bot to the group, you can start the game (using the `/game` command), where the host, through the Telegram Web App, begins to draw the hidden word. Group users see the updated image and write words in the group chat. As soon as the correct word is written, the game ends.
+
+If you get tired of playing, the host or group administrator can cancel the game using the `/cancel` command.
+
+### Endpoints
+
+`/bot/*` - Telegram Bot Webhook endpoint
+
+[`/web/app`](/http_handlers/webapp/miniapp.py#L18) - Telegram Web App
+
+[`/web/app/static`](/http_handlers/webapp/static) - Static resources for Telegram Web App
+
+[`/web/app/update`](/http_handlers/webapp/miniapp.py#L25) - Update host drawings; [client side call](/http_handlers/webapp/static/js/script.js#L335)
+
+[`/web/app/word`](/http_handlers/webapp/miniapp.py#L46) - Get current hidden word; [client side call](/http_handlers/webapp/static/js/script.js#L310)
+
+[`/web/app/events`](/http_handlers/webapp/miniapp.py#L92) - Server-Sent Events (SSE) endpoints with game events; [client side call](/http_handlers/webapp/static/js/script.js#L293)
+
+`/web/app/*` endpoints calls secured by [validating Telegram.WebApp.InitData](https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app) string on server side.
+
 ## Prepare
 
 1. [Create Telegram Bot](https://core.telegram.org/bots/tutorial#obtain-your-bot-token)
 
-    1.1. Disable [privacy mode](https://core.telegram.org/bots/features#privacy-mode) for accessing to user messages and allow groups thru @BotFather (`/mybots`)
+    1.1. Disable [privacy mode](https://core.telegram.org/bots/features#privacy-mode) for accessing to user messages and allow adding to groups thru @BotFather (`/mybots`)
 
     1.2. You will need a domain with SSL; during development, you can use [ngrok](https://ngrok.com/download) or the [port forwarder built into vscode](https://code.visualstudio.com/docs/editor/port-forwarding).
 
@@ -58,7 +82,7 @@ Telegram Web App consists of [a simple HTTP server](/http_handlers/webapp/miniap
     # can be obtained as follows:
     # 1. Send the image (`./resources/initial_canvas.jpg` ) to your bot
     # 2. Get `file_id` from this message (e.g., forward message to https://t.me/JsonDumpBot),
-    # `file_id` can be used only for this bot
+    # `file_id` should be usable only for your bot
     INITIAL_CANVAS_FILE_ID=
     ```
     </details>
@@ -120,7 +144,9 @@ Push to any PaaS that supports heroku buildpacks with provided environment varia
     python main.py
     ```
 
-## Working with localizations (using *Babel*)
+## Working with localizations (using [Babel](https://docs.aiogram.dev/en/dev-3.x/utils/i18n.html))
+
+Localization files must be updated and compiled for almost every source code update (1, 3, 4 and 5 steps).
 
 1. Extract `_("string")` strings:
 

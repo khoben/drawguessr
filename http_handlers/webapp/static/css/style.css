@@ -13,10 +13,12 @@ body {
     -ms-user-select: none;
     overscroll-behavior: none;
     user-select: none;
+    /* Try to not fire slide down event: */
+    /* https://stackoverflow.com/questions/76842573/a-bug-with-collapsing-when-scrolling-in-web-app-for-telegram-bot */
     touch-action: none !important;
 }
 
-#error {
+#fullscreen-message {
     position: absolute;
     left: 0;
     top: 0;
@@ -63,6 +65,22 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    cursor: pointer;
+    transition: 0.25s all;
+}
+.button:active {
+    transform: scale(0.9);
+}
+.button.selected {
+    border-color: var(--tg-theme-button-color, #50a8eb);
+    background-color: var(--tg-theme-button-text-color, #ffffff);
+    color: var(--tg-theme-button-color, #50a8eb);
+    outline: 0.3vw solid;
+}
+
+.button.selected .dot {
+    background-color: var(--tg-theme-button-color, #50a8eb);
+    border-radius: 50%;
 }
 
 .dot {
@@ -119,7 +137,6 @@ body {
     transform: scale(var(--ggs, 1));
     width: 22px;
     height: 18px;
-    color: var(--tg-theme-button-text-color, #ffffff);
 }
 
 .gg-erase::after,
@@ -178,38 +195,46 @@ body {
     transform: rotate(68deg)
 }
 
-.gg-arrow-top-right-r {
-    box-sizing: border-box;
-    position: relative;
+.gg-browse {
     display: block;
-    width: 22px;
+    position: relative;
+    transform: scale(var(--ggs, 1));
+    box-sizing: border-box;
+    width: 16px;
     height: 22px;
     border: 2px solid;
-    transform: scale(var(--ggs, 1));
-    border-radius: 4px
+    border-radius: 3px;
+    background:
+        linear-gradient(to left,
+            currentcolor 10px,
+            transparent 0) no-repeat center 2px/8px 2px,
+        linear-gradient(to left,
+            currentcolor 10px,
+            transparent 0) no-repeat center 6px/8px 2px
 }
 
-.gg-arrow-top-right-r::after,
-.gg-arrow-top-right-r::before {
+.gg-browse::after,
+.gg-browse::before {
     content: "";
     display: block;
     box-sizing: border-box;
     position: absolute;
-    right: 4px
+    border-radius: 22px
 }
 
-.gg-arrow-top-right-r::after {
-    width: 10px;
-    height: 2px;
-    background: currentColor;
-    transform: rotate(-45deg);
-    bottom: 8px
-}
-
-.gg-arrow-top-right-r::before {
+.gg-browse::before {
     width: 6px;
     height: 6px;
-    top: 4px;
-    border-top: 2px solid;
-    border-right: 2px solid
+    border: 2px solid;
+    left: 3px;
+    top: 9px
+}
+
+.gg-browse::after {
+    width: 2px;
+    height: 4px;
+    background: currentColor;
+    bottom: 1px;
+    right: 2px;
+    transform: rotate(-45deg)
 }

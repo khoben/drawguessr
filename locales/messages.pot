@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2023-10-09 12:35+0700\n"
+"POT-Creation-Date: 2023-10-10 15:51+0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -49,27 +49,27 @@ msgstr ""
 msgid "🚫 Denied service"
 msgstr ""
 
-#: services/gamecontroller.py:112
+#: services/gamecontroller.py:167
 msgid "The game has already started"
 msgstr ""
 
-#: services/gamecontroller.py:134 services/gamecontroller.py:184
-#: services/gamecontroller.py:209
+#: services/gamecontroller.py:189 services/gamecontroller.py:239
+#: services/gamecontroller.py:264
 msgid "<a href='tg://user?id={owner_id}'>{owner_name}</a> draws for guessing"
 msgstr ""
 
-#: services/gamecontroller.py:141 services/gamecontroller.py:194
-#: services/gamecontroller.py:216
+#: services/gamecontroller.py:196 services/gamecontroller.py:249
+#: services/gamecontroller.py:271
 msgid "Start drawing"
 msgstr ""
 
-#: services/gamecontroller.py:262
+#: services/gamecontroller.py:317
 msgid ""
 "Correct! Word: <b>{word}</b>.\n"
 "Type /game to start new game"
 msgstr ""
 
-#: services/gamecontroller.py:314
+#: services/gamecontroller.py:369
 msgid "The game is cancelled. Type /game to create new one"
 msgstr ""
 

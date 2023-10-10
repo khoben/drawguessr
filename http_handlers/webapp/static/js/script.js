@@ -1,4 +1,8 @@
 (function () {
+    Telegram.WebApp.ready();
+    Telegram.WebApp.expand();
+    Telegram.WebApp.enableClosingConfirmation();
+
     const i18n = {
         "en": {
             "close": "Close",
@@ -6,6 +10,7 @@
             "not_host": "You`re not the host",
             "ended": "Game ended",
             "not_auth": "No authorization",
+            "already_connected": "The host is already connected",
             "error": "Error"
         },
         "ru": {
@@ -14,45 +19,54 @@
             "not_host": "Вы не ведущий",
             "ended": "Игра закончилась",
             "not_auth": "Нет авторизации",
+            "already_connected": "Ведущий уже подключен",
             "error": "Ошибка"
         },
     };
 
     const default_locale = "en";
-    current_locale = window.navigator.language.split("-")[0];
+    let current_locale = window.navigator.language.split("-")[0];
     if (current_locale in i18n === false) current_locale = default_locale;
 
     _ = (key) => { return i18n[current_locale][key] ?? key; };
-
-    Telegram.WebApp.ready();
-    Telegram.WebApp.expand();
-    Telegram.WebApp.enableClosingConfirmation();
-    Telegram.WebApp.MainButton
-        .setText(_('close'))
-        .show()
-        .onClick(function () {
-            Telegram.WebApp.close();
-        });
 
     const initData = Telegram.WebApp.initData;
     const initDataUnsafe = Telegram.WebApp.initDataUnsafe;
 
     if (!initData || !initDataUnsafe || !initDataUnsafe.start_param) {
-        document.getElementById('error').style.visibility = 'visible';
+        showFullBlockingMessage(_('not_auth'));
         return;
     }
 
     // gameId__123d234f
     const gameId = initDataUnsafe.start_param;
-    let gameWord = null;
+
+    current_locale = initDataUnsafe.user?.language_code ?? current_locale;
+
+    Telegram.WebApp.MainButton
+        .setText(_('close'))
+        .show()
+        .onClick(() => { Telegram.WebApp.close(); });
 
     const canvas = document.getElementById('paintarea'),
         vcanvas = document.createElement('canvas'),
         ctx = canvas.getContext('2d'),
         vctx = vcanvas.getContext('2d'),
-        bounding_pad = 18;
 
-    let rawBrushData = [],
+        colorPalleteBtn = document.getElementById('color'),
+
+        smallDotBtn = document.getElementById('small-dot'),
+        mediumDotBtn = document.getElementById('medium-dot'),
+        largeDotBtn = document.getElementById('large-dot'),
+        eraserBtn = document.getElementById('eraser'),
+
+        clearBtn = document.getElementById('clear'),
+        wordBtn = document.getElementById('word'),
+
+        publishImagePadding = 18;
+
+    let drawingWord = null,
+        rawBrushData = [],
         drawing = false,
         dirty = false,
         paintSize = 3,
@@ -61,45 +75,28 @@
         eraserSize = 12,
         eraserColor = '#ffffff',
         currentTool = 'painter',
+        selectedBtn = null,
         drawingBoundary = null;
 
+    onDrawToolSelected('painter', smallDotBtn, 3);
     attachCanvasListeners();
 
-    showWord();
-    subscribeToGameEvents();
-    setInterval(() => publishImage(), 1_500);
+    let eventSource = subscribeToGameEvents();
+    let intervalHandle = setInterval(() => publishImage(), 1_500);
 
     function attachCanvasListeners() {
+        // Try to not fire slide down event:
+        // https://stackoverflow.com/questions/76842573/a-bug-with-collapsing-when-scrolling-in-web-app-for-telegram-bot
         document.addEventListener('touchmove', (e) => { e.preventDefault() }, { passive: false });
 
-        // Drawing buttons
-        document.getElementById('small-dot').onclick = () => {
-            currentTool = 'painter';
-            color = prevColor ?? color;
-            paintSize = 3;
-            prevColor = null
-        };
-        document.getElementById('medium-dot').onclick = () => {
-            currentTool = 'painter';
-            color = prevColor ?? color;
-            paintSize = 6;
-            prevColor = null
-        };
-        document.getElementById('large-dot').onclick = () => {
-            currentTool = 'painter';
-            color = prevColor ?? color;
-            paintSize = 12;
-            prevColor = null
-        };
-        document.getElementById('eraser').onclick = () => {
-            currentTool = 'eraser';
-            prevColor = prevColor ?? color;
-            paintSize = eraserSize;
-            color = eraserColor
-        }
-        document.getElementById('clear').onclick = clearCanvas;
-        document.getElementById('word').onclick = showWord;
-        document.getElementById('color').onchange = (e) => { color = e.target.value };
+        smallDotBtn.onclick = () => { onDrawToolSelected('painter', smallDotBtn, 3); };
+        mediumDotBtn.onclick = () => { onDrawToolSelected('painter', mediumDotBtn, 6); };
+        largeDotBtn.onclick = () => { onDrawToolSelected('painter', largeDotBtn, 12); };
+        eraserBtn.onclick = () => { onEraserSelected(); };
+
+        clearBtn.onclick = clearCanvas;
+        wordBtn.onclick = showWord;
+        colorPalleteBtn.onchange = (e) => { color = e.target.value };
 
         // Drawing event handlers (bound to mouse, redirected from touch)
         canvas.addEventListener('mousedown', onMouseDown, false);
@@ -118,13 +115,14 @@
     }
 
     function detachListeners() {
-        document.getElementById('small-dot').onclick = null;
-        document.getElementById('medium-dot').onclick = null;
-        document.getElementById('large-dot').onclick = null;
-        document.getElementById('clear').onclick = null;
-        document.getElementById('eraser').onclick = null;
-        document.getElementById('word').onclick = null;
-        document.getElementById('color').onchange = null;
+        smallDotBtn.onclick = null;
+        mediumDotBtn.onclick = null;
+        largeDotBtn.onclick = null;
+        eraserBtn.onclick = null;
+
+        clearBtn.onclick = null;
+        wordBtn.onclick = null;
+        colorPalleteBtn.onchange = null;
 
         canvas.removeEventListener('mousedown', onMouseDown, false);
         canvas.removeEventListener('mouseup', onMouseUp, false);
@@ -133,6 +131,7 @@
         canvas.removeEventListener('touchend', onTouchEnd, false);
         canvas.removeEventListener('touchcancel', onTouchEnd, false);
         canvas.removeEventListener('touchmove', onTouchMove, false);
+
         window.removeEventListener('resize', resizeCanvas, false);
         window.removeEventListener('load', init, false);
     }
@@ -166,6 +165,34 @@
         ctx.lineCap = 'round';
         ctx.strokeStyle = color;
         ctx.stroke();
+    }
+
+    function onDrawToolSelected(type, el, size) {
+        currentTool = type;
+        color = prevColor ?? color;
+        paintSize = size;
+        prevColor = null;
+
+        // Select in UI
+        if (selectedBtn) {
+            selectedBtn.classList.remove("selected");
+        }
+        selectedBtn = el
+        selectedBtn.classList.add("selected");
+    }
+
+    function onEraserSelected() {
+        currentTool = 'eraser';
+        prevColor = prevColor ?? color;
+        paintSize = eraserSize;
+        color = eraserColor;
+
+        // Select in UI
+        if (selectedBtn) {
+            selectedBtn.classList.remove("selected");
+        }
+        selectedBtn = eraserBtn;
+        selectedBtn.classList.add("selected");
     }
 
     function finalizeDrawing() {
@@ -268,19 +295,21 @@
         url.searchParams.set('_auth', initData);
         url.searchParams.set('gameId', gameId);
 
-        let eventSource = new EventSource(url);
-        eventSource.onmessage = function(event) {
-            error_el = document.getElementById('error');
-            error_el.innerText = _(event.data);
-            error_el.style.visibility = 'visible';
-            eventSource.close();
-            detachListeners();
-        };
+        let gameEventsListener = new EventSource(url);
+        gameEventsListener.addEventListener('word', (event) => {
+            drawingWord = event.data;
+            showWord();
+        });
+        gameEventsListener.addEventListener('error', (event) => {
+            showFullBlockingMessage(_(event.data))
+            clearAll();
+        });
+        return gameEventsListener;
     }
 
     function showWord() {
-        if (gameWord) {
-            Telegram.WebApp.showPopup({ title: _('word'), message: gameWord });
+        if (drawingWord) {
+            Telegram.WebApp.showPopup({ title: _('word'), message: drawingWord });
             return;
         }
 
@@ -291,26 +320,13 @@
         let XHR = new XMLHttpRequest();
         XHR.addEventListener('load', event => {
             if (event.target.status < 400) {
-                gameWord = event.target.response
-                Telegram.WebApp.showPopup({ title: _('word'), message: gameWord });
+                drawingWord = event.target.response
 
-                console.log("Success Status: " + event.target.status);
+                Telegram.WebApp.showPopup({ title: _('word'), message: drawingWord });
             } else {
-                error_el = document.getElementById('error');
-                error_el.innerText = _(event.target.response);
-                error_el.style.visibility = 'visible';
-
-                detachListeners();
-
-                console.error("Error Status: " + event.target.status);
+                showFullBlockingMessage(_(event.target.response));
+                clearAll();
             }
-        });
-        XHR.addEventListener('error', event => {
-            error_el = document.getElementById('error');
-            error_el.innerText = _('error');
-            error_el.style.visibility = 'visible';
-            
-            console.error("Error Status: " + event.target.status);
         });
         XHR.open('GET', url);
         XHR.send();
@@ -323,8 +339,8 @@
 
         bounded_vcanvas = document.createElement('canvas');
 
-        const boundWidth = drawingBoundary.x2 - drawingBoundary.x1 + bounding_pad * 2,
-            boundHeight = drawingBoundary.y2 - drawingBoundary.y1 + bounding_pad * 2;
+        const boundWidth = drawingBoundary.x2 - drawingBoundary.x1 + publishImagePadding * 2,
+            boundHeight = drawingBoundary.y2 - drawingBoundary.y1 + publishImagePadding * 2;
 
         bounded_vcanvas.width = boundWidth;
         bounded_vcanvas.height = boundHeight;
@@ -332,7 +348,7 @@
         bounded_vctx = bounded_vcanvas.getContext('2d');
         bounded_vctx.drawImage(
             vcanvas,
-            drawingBoundary.x1 - bounding_pad, drawingBoundary.y1 - bounding_pad,
+            drawingBoundary.x1 - publishImagePadding, drawingBoundary.y1 - publishImagePadding,
             boundWidth, boundHeight,
             0, 0,
             boundWidth, boundHeight
@@ -345,19 +361,21 @@
             formData.append('gameId', gameId)
 
             let XHR = new XMLHttpRequest();
-            XHR.addEventListener('load', event => {
-                if (event.target.status === 200) {
-                    console.log("Success Status: " + event.target.status);
-                } else {
-                    console.error("Error Status: " + event.target.status);
-                }
-            });
-            XHR.addEventListener('error', event => {
-                console.error("Error Status: " + event.target.status);
-            });
             XHR.open('POST', '/web/app/update');
             XHR.send(formData);
 
         }, 'image/webp', 0.1);
+    }
+
+    function showFullBlockingMessage(message) {
+        message_el = document.getElementById('fullscreen-message');
+        message_el.innerText = message;
+        message_el.style.visibility = 'visible';
+    }
+
+    function clearAll() {
+        detachListeners();
+        clearInterval(intervalHandle);
+        eventSource.close();
     }
 })();
